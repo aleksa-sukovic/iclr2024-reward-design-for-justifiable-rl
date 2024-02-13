@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+    mimic-database:
+        container_name: mimic_database
+        image: mimic/postgresql
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                DB_USER: postgres
+                DB_PASSWORD: password
+                DB_NAME: mimic
+                MIMIC_DATA_DIR: /var/data/mimic # path within container to downloaded MIMIC-III files, see volumes
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: mimic
+        ports:
+            - 5432:5432
+        volumes:
+            - /mnt/storage/Development/Data/mimic_database/raw:/var/data/mimic                 # path to downloaded MIMIC-III files
+            - /mnt/storage/Development/Data/mimic_database/postgresql:/var/lib/postgresql/data # path to stored generated database files

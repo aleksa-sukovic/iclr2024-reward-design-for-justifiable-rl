@@ -1,0 +1,4 @@
+__pycache__
+notebooks/playground.ipynb
+external/*
+.vscode/settings.json

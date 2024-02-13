@@ -1,0 +1,24 @@
+{
+    "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "cSpell.words": [
+        "argumentator",
+        "backpropagate",
+        "ddqn",
+        "lmbd",
+        "logits",
+        "mcts",
+        "nashpy",
+        "nashq",
+        "ncol",
+        "nrow",
+        "optim",
+        "parallelizable",
+        "puct",
+        "relu",
+        "selfplay",
+        "Tensorboard",
+        "tianshou",
+        "trange",
+        "unsqueeze"
+    ]
+}

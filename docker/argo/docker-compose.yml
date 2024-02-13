@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+    argo:
+        container_name: argo
+        image: mpi/argo
+        build:
+            context: ../..
+            dockerfile: docker/argo/Dockerfile
+        volumes:
+            - ../..:/home/argo:cached
+            - ../../assets/guild:/root/.guild
+        ports:
+            - 52319:52319
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        command: /bin/sh -c "while sleep 1000; do :; done"

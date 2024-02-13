@@ -1,0 +1,448 @@
+- model: clinician
+  extends: [base-supervised]
+  operations:
+      train:
+          description: Train the behavior cloning clinician policy used in WIS evaluation
+          main: argo.scripts.clinician train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              train-dict-path: ./train_dict.pt
+              val-dict-path: ./val_dict.pt
+              test-dict-path: ./test_dict.pt
+              use-dem: 'true'
+              perform-scaling: 'false'
+              batch-size: 64
+              hidden-dim: 64
+              optimizer: adam
+              lr: 1e-3
+              lr-patience: null
+              weight-decay: 1e-1
+              epochs: 100
+              es-patience: null
+              train-device: cuda:0
+              seed: 5568
+      tune:
+          description: Tune the behavior cloning clinician policy used in WIS evaluation
+          main: argo.scripts.clinician train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              train-dict-path: ./train_dict.pt
+              val-dict-path: ./val_dict.pt
+              test-dict-path: ./test_dict.pt
+              use-dem: 'true'
+              perform-scaling: ['true', 'false']
+              batch-size: [64, 128, 256]
+              hidden-dim: [128, 256, 512]
+              optimizer: [adam, sgd, rmsprop]
+              lr: loguniform[1e-5:1]
+              lr-patience: null
+              weight-decay: [0.0, 1e-2, 1e-3, 1e-4, 1e-5]
+              epochs: 100
+              es-patience: null
+              train-device: cuda:0
+              seed: 5568
+- model: judge
+  extends: [base-supervised]
+  operations:
+      train:
+          description: Train the judge model
+          main: argo.scripts.judge train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              train-dict-path: ./train_dict.pt
+              val-dict-path: ./val_dict.pt
+              test-dict-path: ./test_dict.pt
+              train-preferences-path: ./train_preferences.pt
+              val-preferences-path: ./val_preferences.pt
+              test-preferences-path: ./test_preferences.pt
+              use-dem: 'true'
+              perform-scaling: 'false'
+              preference-generation-method: 'random'
+              batch-size: 64
+              hidden-dim: 256
+              num-arguments: 6
+              optimizer: adam
+              lr: 5e-4
+              lr-schedule: null
+              weight-decay: 0.0
+              epochs: 100
+              es-patience: null
+              train-device: cuda:0
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/val_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/test_dict.pt
+                target-type: link
+- model: argumentator
+  extends: [base-rl]
+  operations:
+      train:
+          description: Train isolated argumentator policy
+          main: argo.scripts.argumentator train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              dataset-path: ./train_preferences.pt
+              judge-path: ./judge.pt
+              resume-path: null
+              num-arguments: 6
+              hidden-dim: 512
+              hidden-depth: 2
+              num-train-envs: 8
+              num-test-envs: 2
+              epochs: 2000
+              step-per-epoch: 700
+              step-per-collect: null
+              episode-per-collect: 256
+              repeat-per-collect: 2
+              lr: 5e-4
+              lr-schedule: constant
+              ent-coef: 1e-2
+              clip-range: 0.1
+              gamma: 0.9
+              gae-lambda: 0.7
+              vf-coef: 0.5
+              max-grad-norm: 1
+              normalize-rewards: 'true'
+              ortho-init: 'true'
+              batch-size: 128
+              train-device: cuda
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_preferences.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+      tune:
+          description: Tune isolated argumentator policy
+          main: argo.scripts.argumentator train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              dataset-path: ./train_preferences.pt
+              judge-path: ./judge.pt
+              num-arguments: 6
+              hidden-dim: [256, 512]
+              hidden-depth: 2
+              num-train-envs: 8
+              num-test-envs: 2
+              epochs: 35
+              step-per-epoch: 700
+              episode-per-collect: 256
+              repeat-per-collect: [1, 2, 5, 10]
+              lr: loguniform[1e-5:1]
+              lr-schedule: [constant, step]
+              ent-coef: loguniform[0.00000001:0.1]
+              clip-range: [0.1, 0.2, 0.3, 0.4]
+              gamma: [0.8, 0.9, 0.95, 0.99]
+              gae-lambda: [0.7, 0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0]
+              vf-coef: [0.3, 0.5, 0.65, 0.75]
+              max-grad-norm: [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 5]
+              normalize-rewards: ['true', 'false']
+              ortho-init: 'true'
+              batch-size: 128
+              train-device: cuda
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_preferences.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+- model: debate
+  extends: [base-rl]
+  operations:
+      train:
+          description: Train self-play debate policy
+          main: argo.scripts.argumentator train-debate
+          flags-dest: args
+          flags-import: no
+          output-scalars: []
+          flags:
+              artifacts-dir: ./dist
+              dataset-path: ./train_preferences.pt
+              judge-path: ./judge.pt
+              num-arguments: 6
+              hidden-dim: 512
+              hidden-depth: 2
+              num-train-envs: 8
+              num-test-envs: 2
+              generations: 500
+              epochs: 150
+              step-per-epoch: 700
+              episode-per-collect: 256
+              step-per-collect: null
+              repeat-per-collect: 2
+              lr: 5e-4
+              lr-schedule: constant
+              ent-coef: 1e-2
+              clip-range: 0.1
+              gamma: 0.9
+              gae-lambda: 0.7
+              vf-coef: 0.5
+              max-grad-norm: 1
+              normalize-rewards: 'true'
+              use-judge-diff-as-reward: 'false'
+              ortho-init: 'true'
+              batch-size: 128
+              train-device: cuda
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_preferences.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+      train-minimax:
+          description: Train minimax debate policy
+          main: argo.scripts.argumentator train-minimax
+          flags-dest: args
+          flags-import: no
+          output-scalars: []
+          flags:
+              artifacts-dir: ./dist
+              dataset-path: ./train_preferences.pt
+              judge-path: ./judge.pt
+              num-arguments: 6
+              hidden-dim: 512
+              hidden-depth: 2
+              num-train-envs: 8
+              num-test-envs: 2
+              generations: 500
+              epochs-argumentator: 5
+              epochs-confuser: 150
+              step-per-epoch: 700
+              episode-per-collect: 256
+              step-per-collect: null
+              repeat-per-collect: 2
+              lr: 5e-4
+              lr-schedule: constant
+              ent-coef: 1e-2
+              clip-range: 0.1
+              gamma: 0.9
+              gae-lambda: 0.7
+              vf-coef: 0.5
+              max-grad-norm: 1
+              normalize-rewards: 'true'
+              use-judge-diff-as-reward: 'false'
+              ortho-init: 'true'
+              batch-size: 128
+              train-device: cuda
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_preferences.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+- model: confuser
+  extends: [base-rl]
+  operations:
+      train:
+          description: Train confuser policy against specified opponent (isolated, self-pay or maxmin argumentative agents)
+          main: argo.scripts.confuser train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              train-dataset-path: ./train_preferences.pt
+              test-dataset-path: ./test_preferences.pt
+              opponent-path: ./argumentator.isolated.pt
+              judge-path: ./judge.pt
+              num-arguments: 6
+              hidden-dim: 256
+              hidden-depth: 2
+              num-train-envs: 8
+              num-test-envs: 2
+              epochs: 2000
+              step-per-epoch: 700
+              episode-per-collect: 256
+              step-per-collect: null
+              repeat-per-collect: 2
+              lr: 5e-4
+              lr-schedule: constant
+              ent-coef: 3e-4
+              clip-range: 0.4
+              gamma: 0.9
+              gae-lambda: 0.7
+              vf-coef: 0.65
+              max-grad-norm: 2.0
+              normalize-rewards: 'true'
+              ortho-init: 'true'
+              propose-evidence-upfront: 'false'
+              xai-method: null
+              xai-bg-dataset: ./xai_bg_dataset.pt
+              xai-policy: null
+              xai-num-arguments: 3
+              batch-size: 128
+              train-device: cuda
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_preferences.pt
+                target-type: link
+              - file: assets/data/sepsis/test_preferences.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+              - file: assets/models/argumentator/6/argumentator.isolated.pt
+                target-type: link
+      tune:
+          description: Train confuser policy against specified opponent (isolated, self-pay or maxmin argumentative agents)
+          main: argo.scripts.confuser train
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              train-dataset-path: ./train_preferences.pt
+              opponent-path: ./argumentator.isolated.pt
+              judge-path: ./judge.pt
+              num-arguments: 6
+              hidden-dim: [256, 512]
+              hidden-depth: 2
+              num-train-envs: 8
+              num-test-envs: 2
+              epochs: 35
+              step-per-epoch: 700
+              episode-per-collect: 256
+              repeat-per-collect: [1, 2, 5, 10]
+              lr: 5e-4
+              lr-schedule: constant
+              ent-coef: loguniform[0.00000001:0.1]
+              clip-range: [0.1, 0.2, 0.3, 0.4]
+              gamma: [0.8, 0.9, 0.95, 0.99]
+              gae-lambda: [0.7, 0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0]
+              vf-coef: [0.3, 0.5, 0.65, 0.75]
+              max-grad-norm: [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 5]
+              normalize-rewards: ['true', 'false']
+              ortho-init: 'true'
+              batch-size: [128, 256, 512, 1024]
+              train-device: cuda
+              seed: 5568
+          requires:
+              - file: assets/data/sepsis/train_preferences.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+              - file: assets/models/argumentator/6/argumentator.isolated.pt
+                target-type: link
+- model: protagonist-ddqn
+  extends: [base-custom-rl]
+  operations:
+      train:
+          description: Train protagonist DDQN policy (baseline and justifiable agents)
+          main: argo.scripts.protagonist train-ddqn
+          flags-dest: args
+          flags-import: no
+          flags:
+              artifacts-dir: ./dist
+              train-dict-path: ./train_val_dict.pt
+              test-dict-path: ./test_dict.pt
+              buffer-path: ./train_buffer.hdf5
+              clinician-path: ./clinician.pt
+              argumentator-path: ./argumentator.debate-minimax.pt
+              baseline-path: null
+              judge-path: ./judge.pt
+              use-dem: 'true'
+              hidden-dim: 128
+              hidden-depth: 2
+              lr: 1e-4
+              epochs: 500
+              update-per-epoch: 50
+              batch-size: 256
+              tau: 1e-3
+              relu-slope: 0.01
+              n-estimation-step: 6
+              reward-multiplier: 15.0
+              debate-multiplier: 5.0
+              debate-deterministic: 'true'
+              dense-reward: 'true'
+              lmbd-justifiability: 0.0
+              num-arguments: 6
+              gamma: 0.99
+              seed: 202302,667495,114159,965751,448102
+              train-device: 'cuda:0'
+          requires:
+              - file: assets/data/sepsis/test_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/train_val_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/train_buffer.hdf5
+                target-type: link
+              - file: assets/models/clinician/clinician.pt
+                target-type: link
+              - file: assets/models/argumentator/6/argumentator.debate-minimax.pt
+                target-type: link
+- model: base-supervised
+  operations:
+      train:
+          description: Base configuration for supervised learning problems
+          sourcecode:
+              - '*.py'
+          requires:
+              - file: assets/data/sepsis/train_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/val_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/test_dict.pt
+                target-type: link
+          flags-import: no
+          output-scalars:
+              - '(\key)=(\value)'
+              - step: 'EPOCH (\step)'
+- model: base-rl
+  operations:
+      train:
+          description: Base training configuration for reinforcement learning agents using the Tianshou framework
+          sourcecode:
+              - '*.py'
+          requires:
+              - file: assets/data/sepsis/train_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/val_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/test_dict.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+          flags-import: no
+          output-scalars:
+              - '(\key)=(\value)'
+              - step: 'Epoch \#(\step)'
+      tune:
+          description: Base tuning configuration for reinforcement learning agents using the Tianshou framework
+          sourcecode:
+              - '*.py'
+          requires:
+              - file: assets/data/sepsis/train_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/val_dict.pt
+                target-type: link
+              - file: assets/data/sepsis/test_dict.pt
+                target-type: link
+              - file: assets/models/judge/judge.pt
+                target-type: link
+          flags-import: no
+          output-scalars:
+              - '(\key)=(\value)'
+              - step: 'Epoch \#(\step)'
+- model: base-custom-rl
+  extends: [base-rl]
+  operations:
+      train:
+          description: Base training configuration for reinforcement learning agents using a custom pipeline
+          output-scalars:
+              - '(\key)=(\value)'
+              - step: 'ITER (\step)'
+      tune:
+          description: Base training configuration for reinforcement learning agents using a custom pipeline
+          output-scalars:
+              - '(\key)=(\value)'
+              - step: 'ITER (\step)'
