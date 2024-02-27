@@ -1,6 +1,6 @@
 # Reward Design for Justifiable Sequential Decision-Making
 
-This repository contains the code and instructions necessary to replicate the results from the ICLR 2024 paper "[Reward Design for Justifiable Sequential Decision-Making](https://openreview.net/forum?id=OUkZXbbwQr)".
+This repository contains the code and instructions necessary to replicate the results from the paper "*Reward Design for Justifiable Sequential Decision-Making*" (ICLR 2024; [OpenReview](https://openreview.net/forum?id=OUkZXbbwQr); [ArXiv](https://arxiv.org/abs/2402.15826)).
 
 ## Dependencies
 
